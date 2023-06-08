@@ -8,6 +8,7 @@ import {
   MD3LightTheme as DefaultTheme,
   Provider as PaperProvider,
 } from 'react-native-paper';
+import Details from './src/screens/Details';
 
 const Stack = createNativeStackNavigator();
 
@@ -41,6 +42,7 @@ const App = () => {
           <NavigationContainer>
             <Stack.Navigator screenOptions={{headerShown: false}}>
               <Stack.Screen name="Home" component={Home} />
+              <Stack.Screen name="Details" component={Details} />
             </Stack.Navigator>
           </NavigationContainer>
         </View>

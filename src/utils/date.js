@@ -1,6 +1,6 @@
 import {formatTenDigit} from './string';
 
-export const getDate = dateString => {
+export const getDateOfMonth = dateString => {
   return dateString.split('/')[0];
 };
 

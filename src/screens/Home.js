@@ -1,8 +1,16 @@
 import React, {useEffect, useState, useRef} from 'react';
-import {SectionList, StyleSheet, Text, View, Dimensions} from 'react-native';
-import {Searchbar, Card, IconButton, Divider} from 'react-native-paper';
-import normalize from 'react-native-normalize';
 import {
+  SectionList,
+  StyleSheet,
+  Text,
+  View,
+  Dimensions,
+  StatusBar,
+} from 'react-native';
+import {createMaterialTopTabNavigator} from '@react-navigation/material-top-tabs';
+import {ActivityIndicator} from 'react-native-paper';
+import {
+  blackColor,
   borderRadiusNormal,
   darkWhiteColor,
   fontSizeLarge,
@@ -18,78 +26,71 @@ import {
 } from '../constants/style';
 import useSheet from '../hooks/useSheet';
 import useDate from '../hooks/useDate';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {formatMoney} from '../utils/number';
 import FixedHeader from '../components/FixedHeader';
 import LinearGradient from 'react-native-linear-gradient';
 import AnimatedHeader from '../components/AnimatedHeader';
-import InfinitePager from '../components/InfinitePager';
+import Transactions from '../components/Transactions';
+import _ from 'lodash';
+import {getMonthYearOfDate} from '../utils/date';
+import {navigate} from '../utils/navigation';
+
+const Tab = createMaterialTopTabNavigator();
 
 export default function Home() {
-  const {get3MonthsData, addMonth} = useDate();
-  console.log('get3MonthsData', get3MonthsData());
+  const {getTransactions} = useSheet();
+  const [transactions, setTransactions] = useState(null);
+  const animatedHeaderRef = useRef(null);
 
-  const renderItem = ({item, index, section}) => {
-    const {Category, Amount, Note} = item;
-    const isFirstItem = !index;
-    const isLastItem = index === section.data.length - 1;
-    return (
-      <View
-        style={[
-          styles.itemContainer,
-          isFirstItem ? styles.firstItemContainer : null,
-          isLastItem ? styles.lastItemContainer : null,
-        ]}>
-        <View style={styles.itemLeftContainer}>
-          <Icon name="rocket" size={normalize(30)} />
-          <View style={styles.itemLeftTextContainer}>
-            <Text style={styles.categoryText}>{Category}</Text>
-            <Text>{Note}</Text>
-          </View>
-        </View>
-        <Text style={{color: Amount > 0 ? greenColor : redColor}}>
-          {formatMoney(Amount)}
-        </Text>
-      </View>
-    );
-  };
+  useEffect(() => {
+    const getTransactionList = async () => {
+      const transactionList = Object.values(await getTransactions());
+      transactionList.reverse();
+      setTransactions(transactionList);
+    };
+    getTransactionList();
+  }, []);
 
-  const renderHeader = () => {
-    return (
-      <View style={{backgroundColor: 'blue', marginHorizontal: -spacingNormal}}>
-        <IconButton icon={'chart-box-outline'} />
-        <Text style={styles.buttonText}>14,500,000</Text>
-        <IconButton icon={'cog-outline'} />
-      </View>
-    );
-  };
+  const initialKey = transactions ? _.last(transactions).key : null;
 
   return (
-    <LinearGradient
-      colors={[mainGradientColor3, mainGradientColor1]}
-      style={styles.container}>
-      <FixedHeader />
-      <AnimatedHeader />
-      <InfinitePager
-        data={get3MonthsData()}
-        onPageChange={addMonth}
-        renderItem={({item}) =>
-          item ? (
-            <SectionList
-              sections={item}
-              stickySectionHeadersEnabled
-              renderItem={renderItem}
-              renderSectionHeader={({section: {date}}) => (
-                <Text style={styles.sectionHeader}>{date}</Text>
-              )}
-              ItemSeparatorComponent={() => <Divider />}
-              keyExtractor={(sectionItem, index) => sectionItem?.Id || index}
-              contentContainerStyle={styles.contentContainer}
+    <View style={styles.container}>
+      <LinearGradient colors={[mainGradientColor3, mainGradientColor1]}>
+        <StatusBar
+          backgroundColor={mainGradientColor3}
+          barStyle={'light-content'}
+        />
+        <FixedHeader />
+        {transactions ? (
+          <AnimatedHeader
+            ref={animatedHeaderRef}
+            initialKey={initialKey}
+            transactions={transactions}
+          />
+        ) : null}
+      </LinearGradient>
+      {transactions ? (
+        <Tab.Navigator
+          tabBar={() => null}
+          initialRouteName={initialKey}
+          screenOptions={{lazy: true}}>
+          {transactions.map(item => (
+            <Tab.Screen
+              key={item.key}
+              name={item.key}
+              component={Transactions}
+              initialParams={item}
+              listeners={({navigation, route}) => ({
+                focus: () =>
+                  animatedHeaderRef.current?.onChangeMonthKey(item.key),
+              })}
             />
-          ) : null
-        }
-      />
-    </LinearGradient>
+          ))}
+        </Tab.Navigator>
+      ) : (
+        <ActivityIndicator color={whiteColor} />
+      )}
+    </View>
   );
 }
 

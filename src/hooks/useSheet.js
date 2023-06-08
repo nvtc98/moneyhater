@@ -1,7 +1,7 @@
 import axios from 'axios';
 import constants from '../constants';
 import _ from 'lodash';
-import {getDate, getMonth, getMonthYear} from '../utils/date';
+import {getDateOfMonth, getMonth, getMonthYear} from '../utils/date';
 
 const DATA = [
   {
@@ -1715,32 +1715,45 @@ const DATA = [
 ];
 
 const useSheet = () => {
-  const {baseURL} = constants;
+  const {googleapis} = constants;
 
-  const getSectionList = list => {
-    const group = _.groupBy(list, item => getDate(item?.Date));
+  const parseItem = (item, keys) => {
+    const parsedItem = {};
+    keys.forEach((key, index) => {
+      parsedItem[key] = item[index];
+    });
+    return parsedItem;
+  };
+
+  const getSectionList = (list, keys) => {
+    const group = _.groupBy(list, item => getDateOfMonth(item[1]));
     const groupKeys = Object.keys(group).sort((x, y) => y - x);
-    return groupKeys.map(key => ({date: key, data: group[key]}));
+    return groupKeys.map(key => ({
+      date: key,
+      data: group[key].map(item => parseItem(item, keys)),
+    }));
   };
 
   const getGroupOfMonths = list => {
-    const group = _.groupBy(list, item => getMonthYear(item?.Date));
+    const keys = list[0];
+    list = list.slice(1);
+    const group = _.groupBy(list, item => getMonthYear(item[1]));
     Object.keys(group).forEach(key => {
-      group[key] = getSectionList(group[key]);
+      group[key] = {
+        key,
+        data: getSectionList(group[key], keys),
+      };
     });
     return group;
   };
 
   const getTransactions = async () => {
     try {
-      // const result = await axios({
-      //   method: 'get',
-      //   url: `${baseURL}`,
-      // });
-      // console.log('result', result?.data);
-      // return result?.data || [];
-      const data = DATA;
-      return getGroupOfMonths(data);
+      const result = await axios({
+        method: 'get',
+        url: `${googleapis.baseURL}${googleapis.sheetId}/values/${googleapis.sheetName.transactions}?alt=json&key=${googleapis.key}`,
+      });
+      return getGroupOfMonths(result?.data?.values || []);
     } catch (error) {
       return [];
     }
